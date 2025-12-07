@@ -51,9 +51,11 @@ export class DatabaseCopyMigrator {
         continue;
       }
 
+      const oldColumns = new Set(table.columns.map((col) => col.name));
+      const newColumns = new Set(newTable.columns.map((col) => col.name));
       const columnIntersection = new Set(
-        table.columns.map((col) => col.name),
-      ).intersection(new Set(newTable.columns.map((col) => col.name)));
+        [...oldColumns].filter((col) => newColumns.has(col)),
+      );
 
       const colNames = [...columnIntersection].sort();
       await sql`INSERT INTO ${sql.table(table.name)} (${sql.join(colNames.map((n) => sql.ref(n)))}) SELECT ${sql.join(colNames.map((n) => sql.ref(n)))} FROM ${sql.ref('old')}.${sql.table(table.name)} WHERE true ON CONFLICT DO NOTHING;`.execute(
@@ -75,7 +77,7 @@ export class DatabaseCopyMigrator {
     await this.dbAccess.closeConnection(currentDbPath);
     await fs.cp(tmpPath, currentDbPath);
     // Force reinit at the new path
-    this.dbAccess.setConnection(currentDbPath);
+    await this.dbAccess.setConnection(currentDbPath);
   }
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any

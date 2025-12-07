@@ -260,6 +260,7 @@ export class DBAccess {
     const name = getDefaultDatabaseName();
     if (!this.didInit) {
       this.connections.set(name, new Connection(name));
+      this.didInit = true;
     }
     return this.connections.get(name)!;
   }
@@ -292,7 +293,12 @@ export class DBAccess {
     return conn;
   }
 
-  setConnection(name: string) {
+  async setConnection(name: string) {
+    const existingConn = DBAccess.connections.get(name);
+    if (existingConn) {
+      existingConn.sqlite.close();
+      await existingConn.kysely.destroy();
+    }
     DBAccess.connections.set(name, new Connection(name));
   }
 
